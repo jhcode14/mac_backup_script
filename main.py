@@ -3,6 +3,8 @@ from dotenv import load_dotenv
 import heapq
 from datetime import datetime, timezone
 import shutil
+import sys
+import logging
 
 # Load environment variables from .env file
 load_dotenv()
@@ -11,6 +13,24 @@ load_dotenv()
 BACKUP_STORAGE_DIR = os.getenv('BACKUP_STORAGE_DIR')
 SOURCE_DIR = os.getenv('SOURCE_DIR')
 MAX_BACKUP_SIZE = int(os.getenv('MAX_BACKUP_SIZE', '1000000000'))  # Default to 1GB if not set
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+###################################################
+
+############## Logging ##############
+def _coerce_log_level(level_str: str) -> int:
+    return getattr(logging, level_str, logging.INFO)
+
+logging.basicConfig(
+    level=_coerce_log_level(LOG_LEVEL),
+    format="%(asctime)s %(levelname)s %(message)s",
+    stream=sys.stdout,  # stdout -> captured by launchd StandardOutPath
+)
+logger = logging.getLogger(__name__)
+#####################################
+
+############## Constants ##############
+DATETIME_FORMAT = "%Y-%m-%d_%H-%M-%S"
+######################################
 
 # Validate required variables
 required_vars = {
@@ -21,64 +41,75 @@ required_vars = {
 for var_name, var_value in required_vars.items():
     if not var_value:
         raise ValueError(f"Required environment variable {var_name} is not set")
-###################################################
-
-############## Constant ##############
-DATETIME_FORMAT = "%Y-%m-%d_%H-%M-%S"
-######################################
 
 def backup():
+    logger.info("Backup job started")
     # Check if BACKUP_STORAGE_DIR exists, if not, create it
     os.makedirs(BACKUP_STORAGE_DIR, exist_ok=True)
 
     # Get existing cache size & file window
     file_heap, tot_backup_sz = aggregate_dir_size_stats(p=BACKUP_STORAGE_DIR)
+    logger.debug(f"Existing backups: count={len(file_heap)} total_size_bytes={tot_backup_sz}")
 
-    # Validate & Check Obs Vault size
+    # Validate & Check source size
     if not os.path.exists(SOURCE_DIR):
-        # TODO: Look into how to fail and not retry? vs retry for other failiure
-        raise FileNotFoundError
+        logger.error(f"Source directory does not exist: {SOURCE_DIR}")
+        raise FileNotFoundError(SOURCE_DIR)
     
     _, vault_sz = aggregate_dir_size_stats(p=SOURCE_DIR)
+    logger.info(f"Source size bytes: {vault_sz}")
 
     # Evict oldest backup(s) if over max_cache limit
-    while(tot_backup_sz+vault_sz) > MAX_BACKUP_SIZE:
-        file_entry = heapq.heappop(file_heap)
-        success = delete_dir(file_entry[2])
+    while (tot_backup_sz + vault_sz) > MAX_BACKUP_SIZE and file_heap:
+        name, size, path = heapq.heappop(file_heap)
+        logger.warning(f"Evicting old backup '{name}' size={size} path={path}")
+        success = delete_dir(path)
         if not success:
-            raise Exception("Error with deleting")
-        tot_backup_sz -= file_entry[1]
+            logger.error(f"Failed to delete backup directory: {path}")
+            raise Exception("Error deleting backup directory")
+        tot_backup_sz -= size
+        logger.debug(f"Post-eviction total backup size: {tot_backup_sz}")
+    
+    if (tot_backup_sz + vault_sz) > MAX_BACKUP_SIZE and not file_heap:
+        raise Exception("Insufficient space after evicting all backups")
 
     # Create & store new backup
-    new_BACKUP_STORAGE_DIR = os.path.join(BACKUP_STORAGE_DIR, get_current_datetime_str())
-    os.makedirs(new_BACKUP_STORAGE_DIR, exist_ok=False) # shouldn't already exist
-    shutil.copytree(SOURCE_DIR, new_BACKUP_STORAGE_DIR)
-    # TODO: Look into how to "succeed"
+    timestamp = get_current_datetime_str()
+    final_dir = os.path.join(BACKUP_STORAGE_DIR, timestamp)
+    if os.path.exists(final_dir): # rare collision if two runs in same second
+        raise FileExistsError(f"Backup dir already exists: {final_dir}")
 
+    with tempfile.TemporaryDirectory(dir=BACKUP_STORAGE_DIR, prefix=f".tmp_{timestamp}_") as tmp_dir:
+        logger.info(f"Copying to temp: {tmp_dir}")
+        shutil.copytree(SOURCE_DIR, tmp_dir, dirs_exist_ok=True)
+        logger.info(f"Renaming {tmp_dir} -> {final_dir}")
+        os.rename(tmp_dir, final_dir)
+
+    logger.info("Backup completed successfully")
 
 def aggregate_dir_size_stats(p: str):
-    """adss
-
+    """
     param: path of the directory that you'd like to query for
-    returns: min_heap (timestamp(name), size, path) and total size of dir
+    returns: min_heap of (name, size_bytes, absolute_path) and total size of dir
+
+    Note: the path feed in should exist...
     """
     file_heap = []
     total_backup_sz = 0
 
-    with os.scandir(p) as enteries:
-        for entry in enteries:
+    with os.scandir(p) as entries:
+        for entry in entries:
             name = entry.name
             walk_path = os.path.join(p, name)
             tot_sz = os.path.getsize(walk_path)
             if not entry.is_dir():
-                continue # skip non backup dirs
+                total_backup_sz += tot_sz
+                continue  # skip non backup dirs
             for root, dirs, files in os.walk(walk_path):
                 for f in files:
                     file_path = os.path.join(root, f)
                     tot_sz += os.path.getsize(file_path)
-            
-            # aggregate stats
-            heapq.heappush(file_heap, (name, tot_sz))
+            heapq.heappush(file_heap, (name, tot_sz, walk_path))
             total_backup_sz += tot_sz
 
     return file_heap, total_backup_sz
@@ -91,10 +122,11 @@ def delete_dir(dir_path: str):
             shutil.rmtree(dir_path)
             return True
     except OSError as e:
-        print(f"Error deleting directory {dir_path}: {e}")
+        # stderr -> captured by launchd StandardErrorPath
+        logger.error(f"Error deleting directory {dir_path}: {e}", exc_info=True)
         return False
     return False
-            
+
 # return utc-0 datetime timestamp string in DATETIME_FORMAT
 def get_current_datetime_str():
     now = datetime.now(timezone.utc)
@@ -102,4 +134,8 @@ def get_current_datetime_str():
     return string_stamp
 
 if __name__ == "__main__":
-    backup()
+    try:
+        backup()
+    except Exception as e:
+        logger.exception(f"Backup failed: {e}")
+        sys.exit(1)

@@ -15,6 +15,7 @@ Follow the `.env.example` to create an `.env` file with the required variables:
 - `BACKUP_STORAGE_DIR`: Directory where backups will be stored
 - `SOURCE_DIR`: Directory to backup (e.g., your Obsidian vault)
 - `MAX_BACKUP_SIZE`: Maximum total backup size in bytes (optional, defaults to 1GB)
+- `LOG_LEVEL`: For logging.
 
 ### 2. Install dependencies
 
