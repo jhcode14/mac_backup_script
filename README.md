@@ -1,4 +1,4 @@
-!!! The script is currently half-baked, use with caution !!!
+!!! The script is currently in testing, use with caution !!!
 
 # Mac (directory/folder) Backup Script
 
