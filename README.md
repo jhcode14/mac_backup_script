@@ -1,6 +1,6 @@
 !!! The script is currently half-baked, use with caution !!!
 
-# Mac Backup Script
+# Mac (directory/folder) Backup Script
 
 This is a script that is intended to be a cron/launchmd job to peridically backup a directory to another directory.
 
