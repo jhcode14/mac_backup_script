@@ -51,7 +51,7 @@ def backup():
 
     # Create & store new backup
     new_BACKUP_STORAGE_DIR = os.path.join(BACKUP_STORAGE_DIR, get_current_datetime_str())
-    os.makedirs(new_BACKUP_STORAGE_DIR, exist_ok=False)
+    os.makedirs(new_BACKUP_STORAGE_DIR, exist_ok=False) # shouldn't already exist
     shutil.copytree(SOURCE_DIR, new_BACKUP_STORAGE_DIR)
     # TODO: Look into how to "succeed"
 
@@ -62,6 +62,9 @@ def aggregate_dir_size_stats(p: str):
     param: path of the directory that you'd like to query for
     returns: min_heap (timestamp(name), size, path) and total size of dir
     """
+    file_heap = []
+    total_backup_sz = 0
+
     with os.scandir(p) as enteries:
         for entry in enteries:
             name = entry.name
@@ -78,12 +81,14 @@ def aggregate_dir_size_stats(p: str):
             heapq.heappush(file_heap, (name, tot_sz))
             total_backup_sz += tot_sz
 
+    return file_heap, total_backup_sz
+
 # DANGER
 def delete_dir(dir_path: str):
     """Safely delete a directory and all its contents"""
     try:
         if os.path.exists(dir_path):
-            shutil.rmtree(dirpath)
+            shutil.rmtree(dir_path)
             return True
     except OSError as e:
         print(f"Error deleting directory {dir_path}: {e}")

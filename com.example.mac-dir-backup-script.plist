@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Unique identifier for this launchd job -->
+    <key>Label</key>
+    <string>com.example.mac-dir-backup-script</string>
+    
+    <!-- Command to execute -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>${HOME}/.local/scripts/mac_backup_script/main.py</string>
+    </array>
+    
+    <!-- Working directory (where .env file should be located) -->
+    <key>WorkingDirectory</key>
+    <string>${HOME}/.local/scripts/mac_backup_script</string>
+    
+    <!-- Run immediately when loaded -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Run only once per scheduled interval -->
+    <key>LaunchOnlyOnce</key>
+    <true/>
+    
+    <!-- Run every hour (3600 seconds) -->
+    <key>StartInterval</key>
+    <integer>3600</integer>
+
+    <!-- Prevent overlapping runs (5 minutes) -->
+    <key>ThrottleInterval</key>
+    <integer>300</integer>
+
+    <!-- Exit if job takes too long (30 minutes) -->
+    <key>TimeOut</key>
+    <integer>1800</integer>
+    
+    <!-- Lower CPU priority -->
+    <key>Nice</key>
+    <integer>10</integer>
+    
+    <!-- Log files -->
+    <key>StandardOutPath</key>
+    <string>${HOME}/.local/logs/mac_backup_script/backup.log</string>
+    
+    <key>StandardErrorPath</key>
+    <string>${HOME}/.local/logs/mac_backup_script/backup_error.log</string>
+    
+    <!-- Don't restart if job crashes or exits -->
+    <key>KeepAlive</key>
+    <false/>
+    
+    <!-- Process type (Background, Standard, Interactive) -->
+    <key>ProcessType</key>
+    <string>Background</string>
+    
+    <!-- Resource limits -->
+    <key>SoftResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>1024</integer>
+        <key>NumberOfProcesses</key>
+        <integer>50</integer>
+    </dict>
+</dict>
+</plist>
