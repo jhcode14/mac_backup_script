@@ -9,13 +9,13 @@
     <!-- Command to execute -->
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/bin/python3</string>
-        <string>${HOME}/.local/scripts/mac_backup_script/main.py</string>
+        <string>/Users/john_doe/.local/scripts/mac_backup_script/.venv/bin/python</string>
+        <string>/Users/john_doe/.local/scripts/mac_backup_script/main.py</string>
     </array>
     
     <!-- Working directory (where .env file should be located) -->
     <key>WorkingDirectory</key>
-    <string>${HOME}/.local/scripts/mac_backup_script</string>
+    <string>/Users/john_doe/.local/scripts/mac_backup_script</string>
     
     <!-- Run immediately when loaded -->
     <key>RunAtLoad</key>
@@ -35,10 +35,10 @@
     
     <!-- Log files -->
     <key>StandardOutPath</key>
-    <string>${HOME}/.local/logs/mac_backup_script/backup.log</string>
+    <string>/Users/john_doe/.local/logs/mac_backup_script/backup.log</string>
     
     <key>StandardErrorPath</key>
-    <string>${HOME}/.local/logs/mac_backup_script/backup_error.log</string>
+    <string>/Users/john_doe/.local/logs/mac_backup_script/backup_error.log</string>
     
     <!-- Don't restart if job crashes or exits -->
     <key>KeepAlive</key>

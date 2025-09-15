@@ -11,8 +11,13 @@ import tempfile
 load_dotenv()
 
 ############## Environment Variables ##############
-BACKUP_STORAGE_DIR = os.getenv('BACKUP_STORAGE_DIR')
-SOURCE_DIR = os.getenv('SOURCE_DIR')
+def _resolve_path(p: str) -> str:
+    if not p:
+        return p
+    return os.path.abspath(os.path.expanduser(os.path.expandvars(p)))
+
+BACKUP_STORAGE_DIR = _resolve_path(os.getenv('BACKUP_STORAGE_DIR'))
+SOURCE_DIR = _resolve_path(os.getenv('SOURCE_DIR'))
 MAX_BACKUP_SIZE = int(os.getenv('MAX_BACKUP_SIZE', '1000000000'))  # Default to 1GB if not set
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 ###################################################
