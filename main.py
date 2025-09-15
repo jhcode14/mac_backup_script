@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import shutil
 import sys
 import logging
+import tempfile
 
 # Load environment variables from .env file
 load_dotenv()
@@ -101,14 +102,21 @@ def aggregate_dir_size_stats(p: str):
         for entry in entries:
             name = entry.name
             walk_path = os.path.join(p, name)
-            tot_sz = os.path.getsize(walk_path)
-            if not entry.is_dir():
-                total_backup_sz += tot_sz
+            if not entry.is_dir(follow_symlinks=False):
+                try:
+                    total_backup_sz += entry.stat(follow_symlinks=False).st_size
+                except (FileNotFoundError, PermissionError) as e:
+                    logger.debug(f"Skip root file '{walk_path}': {e}")
                 continue  # skip non backup dirs
-            for root, dirs, files in os.walk(walk_path):
+
+            tot_sz = 0
+            for root, dirs, files in os.walk(walk_path, followlinks=False):
                 for f in files:
                     file_path = os.path.join(root, f)
-                    tot_sz += os.path.getsize(file_path)
+                    try:
+                        tot_sz += os.stat(file_path, follow_symlinks=False).st_size
+                    except (FileNotFoundError, PermissionError) as e:
+                        logger.debug(f"Skip file '{file_path}': {e}")
             heapq.heappush(file_heap, (name, tot_sz, walk_path))
             total_backup_sz += tot_sz
 

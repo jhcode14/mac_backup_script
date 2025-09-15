@@ -83,11 +83,6 @@ This script is designed for backing up iCloud-synced directories (like Obsidian 
 - **iCloud sync**: Make sure your source directory is fully synced before backup runs
 - **User permissions**: Script runs as your user account to access iCloud files
 
-## TODO
-
-- try-catch and error logging
-- write tests
-
-Long term goal:
+## Improvements TODO:
 
 - Create diff based backups to optimize for space?
