@@ -81,6 +81,7 @@ def backup():
         raise FileExistsError(f"Backup dir already exists: {final_dir}")
 
     with tempfile.TemporaryDirectory(dir=BACKUP_STORAGE_DIR, prefix=f".tmp_{timestamp}_") as tmp_dir:
+        # Note: edge case covered - if .tmp fails, it will be deleted first when running out of space
         logger.info(f"Copying to temp: {tmp_dir}")
         shutil.copytree(SOURCE_DIR, tmp_dir, dirs_exist_ok=True)
         logger.info(f"Renaming {tmp_dir} -> {final_dir}")
